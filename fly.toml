@@ -1,8 +1,12 @@
 app = 'hermes-germ'
 primary_region = 'ord'
 
+auto_stop_machines = 'stop'
+auto_start_machines = true
+min_machines_running = 0
+
 [processes]
-  app = 'gateway run'
+  app = "sh -c 'nohup hermes dashboard --host 0.0.0.0 --port 9119 --no-open > /opt/data/logs/dashboard.log 2>&1 & exec hermes gateway run'"
 
 [build]
   dockerfile = 'Dockerfile'
@@ -10,14 +14,9 @@ primary_region = 'ord'
 [env]
   API_SERVER_HOST = '0.0.0.0'
   API_SERVER_PORT = '8642'
-
-[http_service]
-  internal_port = 8642
-  force_https = true
-  auto_stop_machines = 'stop'
-  auto_start_machines = true
-  min_machines_running = 0
-  processes = ['app']
+  HERMES_DASHBOARD = '1'
+  HERMES_DASHBOARD_HOST = '0.0.0.0'
+  HERMES_DASHBOARD_PORT = '9119'
 
 [mounts]
   source = 'hermes_state'
@@ -28,3 +27,32 @@ primary_region = 'ord'
   cpu_kind = 'shared'
   cpus = 1
   memory_mb = 1024
+
+# Port 8642: OpenAI-compatible orchestration API (existing, proven) — keep.
+[[services]]
+  internal_port = 8642
+  protocol = 'tcp'
+  processes = ['app']
+  force_https = true
+  auto_stop_machines = 'stop'
+  auto_start_machines = true
+  min_machines_running = 0
+  [[services.ports]]
+    port = 80
+    handlers = ['http']
+  [[services.ports]]
+    port = 443
+    handlers = ['http', 'tls']
+
+# Port 9119: hermes serve/dashboard — Hermes Desktop remote gateway backend.
+[[services]]
+  internal_port = 9119
+  protocol = 'tcp'
+  processes = ['app']
+  force_https = true
+  auto_stop_machines = 'stop'
+  auto_start_machines = true
+  min_machines_running = 0
+  [[services.ports]]
+    port = 9119
+    handlers = ['http', 'tls']
